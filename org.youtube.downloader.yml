@@ -1,0 +1,40 @@
+app-id: org.videoteka.app
+runtime: org.kde.Platform
+runtime-version: '6.5'
+sdk: org.kde.Sdk
+command: videoteka
+finish-args:
+  - --share=network
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=host
+
+modules:
+  - name: python-dependencies
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-deps --prefix=${FLATPAK_DEST} PyQt6
+      - pip3 install --prefix=${FLATPAK_DEST} yt-dlp
+    sources:
+      - type: pip
+        name: PyQt6
+        version: '>=6.6.0'
+      - type: pip
+        name: yt-dlp
+        version: '>=2024.0.0'
+
+  - name: videoteka
+    buildsystem: simple
+    build-commands:
+      - mkdir -p ${FLATPAK_DEST}/app
+      - cp -r models/ downloader/ ui/ utils/ ${FLATPAK_DEST}/app/
+      - cp main.py ${FLATPAK_DEST}/app/videoteka
+      - chmod +x ${FLATPAK_DEST}/app/videoteka
+    sources:
+      - type: dir
+        path: .
+
+# Metadata
+appdata: org.videoteka.app.appdata.xml
+

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.videoteka.app</id>
+  <metadata_license>GPL-3.0-or-later</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Videoteka</name>
+  <summary>A desktop application for downloading YouTube videos</summary>
+  <description>
+    <p>
+      Videoteka is a powerful desktop application that allows you to download YouTube videos
+      with support for parallel downloads, quality settings, and advanced features.
+    </p>
+    <ul>
+      <li>Download multiple YouTube videos simultaneously</li>
+      <li>Configurable video quality and format settings</li>
+      <li>Download queue management with pause/resume</li>
+      <li>Download history tracking</li>
+      <li>Real-time progress monitoring</li>
+      <li>Clean PyQt6-based GUI</li>
+    </ul>
+  </description>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Downloader</category>
+  </categories>
+  <screenshots>
+    <screenshot>
+      <caption>Main Window</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="1.0.0" date="2025-10-30"/>
+  </releases>
+  <url type="homepage">https://github.com/yourusername/videoteka</url>
+  <update_contact>your-email@example.com</update_contact>
+</component>
+
