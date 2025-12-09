@@ -23,9 +23,10 @@ class VideoInfoWorker(QObject):
     all_info_fetched = pyqtSignal(list)  # list of (url, title) tuples
     finished = pyqtSignal()
     
-    def __init__(self, urls: list):
+    def __init__(self, urls: list, cookies_file_path: str = ""):
         super().__init__()
         self.urls = urls
+        self.cookies_file_path = cookies_file_path
     
     def fetch_all_info(self):
         """Fetch video information for all URLs."""
@@ -33,7 +34,7 @@ class VideoInfoWorker(QObject):
         results = []
         
         for index, url in enumerate(self.urls):
-            info = handler.get_video_info(url)
+            info = handler.get_video_info(url, self.cookies_file_path)
             title = info.get('title', 'Unknown Video') if info else "Unknown Video"
             results.append((url, title))
             
@@ -445,7 +446,7 @@ class MainWindow(QMainWindow):
         
         # Create worker thread for fetching video info
         self.info_thread = QThread()
-        self.info_worker = VideoInfoWorker(urls_to_add)
+        self.info_worker = VideoInfoWorker(urls_to_add, self.settings.cookies_file_path)
         self.info_worker.moveToThread(self.info_thread)
         
         # Connect signals

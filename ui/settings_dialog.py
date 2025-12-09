@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
     QComboBox, QSpinBox, QCheckBox, QPushButton, 
-    QGroupBox, QFormLayout
+    QGroupBox, QFormLayout, QFileDialog, QTextBrowser
 )
 from models.settings import Settings
 
@@ -64,6 +64,24 @@ class SettingsDialog(QDialog):
             }
             QCheckBox {
                 color: #ffffff;
+            }
+            QPushButton {
+                padding: 5px 15px;
+                border: 1px solid #444;
+                border-radius: 3px;
+                background-color: #2d2d2d;
+                color: #ffffff;
+            }
+            QPushButton:hover {
+                background-color: #3c3c3c;
+                border-color: #0078d4;
+            }
+            QTextBrowser {
+                border: 1px solid #444;
+                border-radius: 3px;
+                background-color: #2d2d2d;
+                color: #ffffff;
+                padding: 5px;
             }
         """)
         
@@ -127,6 +145,56 @@ class SettingsDialog(QDialog):
         download_group.setLayout(download_layout)
         layout.addWidget(download_group)
         
+        # Authentication Group
+        auth_group = QGroupBox("Authentication")
+        auth_layout = QVBoxLayout()
+        
+        # Explanation text
+        explanation_text = QTextBrowser()
+        explanation_text.setMaximumHeight(120)
+        explanation_text.setReadOnly(True)
+        explanation_text.setOpenExternalLinks(True)
+        explanation_html = """
+        <p style="color: #ffffff; font-size: 11px;">
+        <b>Why cookies are needed:</b><br>
+        YouTube may require you to sign in to confirm you're not a bot. 
+        Providing cookies from your browser allows yt-dlp to authenticate 
+        as you and bypass this verification.
+        </p>
+        <p style="color: #ffffff; font-size: 11px;">
+        <b>How to export cookies:</b><br>
+        Use a browser extension (like "Get cookies.txt LOCALLY" for Chrome/Firefox) 
+        or the yt-dlp command-line tool to export your YouTube cookies to a cookies.txt file.
+        </p>
+        <p style="color: #ffffff; font-size: 11px;">
+        <a href="https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp" 
+           style="color: #0078d4;">Learn more about cookies and yt-dlp</a>
+        </p>
+        """
+        explanation_text.setHtml(explanation_html)
+        auth_layout.addWidget(explanation_text)
+        
+        # File selection
+        file_layout = QHBoxLayout()
+        self.cookies_path_label = QLabel(
+            self.settings.cookies_file_path if self.settings.cookies_file_path else "No file selected"
+        )
+        self.cookies_path_label.setWordWrap(True)
+        self.cookies_path_label.setStyleSheet("color: #888; padding: 5px;")
+        file_layout.addWidget(self.cookies_path_label, 1)
+        
+        self.browse_button = QPushButton("Browse...")
+        self.browse_button.clicked.connect(self.browse_cookies_file)
+        file_layout.addWidget(self.browse_button)
+        
+        self.clear_button = QPushButton("Clear")
+        self.clear_button.clicked.connect(self.clear_cookies_file)
+        file_layout.addWidget(self.clear_button)
+        
+        auth_layout.addLayout(file_layout)
+        auth_group.setLayout(auth_layout)
+        layout.addWidget(auth_group)
+        
         # Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
@@ -143,6 +211,25 @@ class SettingsDialog(QDialog):
         
         self.setLayout(layout)
     
+    def browse_cookies_file(self):
+        """Open file dialog to select cookies.txt file."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Cookies File",
+            "",
+            "Text Files (*.txt);;All Files (*)"
+        )
+        if file_path:
+            self.settings.cookies_file_path = file_path
+            self.cookies_path_label.setText(file_path)
+            self.cookies_path_label.setStyleSheet("color: #ffffff; padding: 5px;")
+    
+    def clear_cookies_file(self):
+        """Clear the selected cookies file."""
+        self.settings.cookies_file_path = ""
+        self.cookies_path_label.setText("No file selected")
+        self.cookies_path_label.setStyleSheet("color: #888; padding: 5px;")
+    
     def get_settings(self) -> Settings:
         """Get the updated settings."""
         self.settings.video_quality = self.quality_combo.currentText()
@@ -151,5 +238,6 @@ class SettingsDialog(QDialog):
         self.settings.download_subtitles = self.subtitle_check.isChecked()
         self.settings.subtitles_language = self.subtitle_lang.currentText()
         self.settings.max_concurrent_downloads = self.max_concurrent_spin.value()
+        # cookies_file_path is already updated in browse_cookies_file/clear_cookies_file
         return self.settings
 

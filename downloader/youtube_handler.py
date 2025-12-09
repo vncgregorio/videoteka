@@ -1,5 +1,6 @@
 """YouTube handler using yt-dlp."""
 import yt_dlp
+import os
 from typing import Callable, Optional
 from PyQt6.QtCore import QObject, pyqtSignal
 
@@ -59,13 +60,17 @@ class YouTubeHandler:
     def __init__(self, progress_hook: Optional[YouTubeProgressHook] = None):
         self.progress_hook = progress_hook
     
-    def get_video_info(self, url: str) -> Optional[dict]:
+    def get_video_info(self, url: str, cookies_file_path: str = "") -> Optional[dict]:
         """Get video information without downloading."""
         try:
             ydl_opts = {
                 'quiet': True,
                 'no_warnings': True,
             }
+            
+            # Add cookies file if provided and exists
+            if cookies_file_path and os.path.exists(cookies_file_path):
+                ydl_opts['cookiefile'] = cookies_file_path
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -104,6 +109,11 @@ class YouTubeHandler:
             if config.get('download_subtitles', False):
                 ydl_opts['writesubtitles'] = True
                 ydl_opts['subtitleslangs'] = [config.get('subtitles_language', 'en')]
+            
+            # Add cookies file if provided and exists
+            cookies_file_path = config.get('cookies_file_path', '')
+            if cookies_file_path and os.path.exists(cookies_file_path):
+                ydl_opts['cookiefile'] = cookies_file_path
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)

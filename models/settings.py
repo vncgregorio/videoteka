@@ -45,6 +45,7 @@ class Settings:
     subtitles_language: str = "en"
     max_concurrent_downloads: int = 3
     download_folder: str = ""
+    cookies_file_path: str = ""
     
     @classmethod
     def from_file(cls, filename: str = None) -> "Settings":
@@ -56,7 +57,11 @@ class Settings:
             try:
                 with open(filename, 'r') as f:
                     data = json.load(f)
-                return cls(**data)
+                settings = cls(**data)
+                # Validate cookies file path - clear if file doesn't exist
+                if settings.cookies_file_path and not os.path.exists(settings.cookies_file_path):
+                    settings.cookies_file_path = ""
+                return settings
             except (json.JSONDecodeError, TypeError, KeyError):
                 pass
         return cls()
