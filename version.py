@@ -6,7 +6,7 @@ __version_info__ = (1, 2, 2)
 # Version components
 MAJOR = 1
 MINOR = 2
-PATCH = 1
+PATCH = 2
 
 def get_version():
     """Get the version string."""
