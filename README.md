@@ -258,7 +258,21 @@ The script will automatically update:
 
 ### Git Integration
 
-When you're ready to create a release:
+When you're ready to create a release, you can either use the one-shot script or do it manually.
+
+**Using the bump script (recommended):**
+
+```bash
+# Bump to 1.2.0, commit version files, and create tag v1.2.0 (tag not pushed)
+./bump_version.sh 1 2 0
+
+# Same and push the new commit and tag to origin
+./bump_version.sh 1 2 0 --push
+```
+
+The script updates `version.py` and appdata XML, commits them, and creates an annotated tag. Use `--push` to push the commit and tag to `origin`.
+
+**Manual steps:**
 
 1. Update the version using the script above
 2. Commit the changes: `git add . && git commit -m "Bump version to X.Y.Z"`
