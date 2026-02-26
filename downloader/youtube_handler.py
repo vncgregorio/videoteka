@@ -71,20 +71,24 @@ class YouTubeHandler:
                 return {'node': {'path': node_path}}
         return {'node': {}}
     
+    def _base_ydl_opts(self, cookies_file_path: str = "") -> dict:
+        """Return base yt-dlp options shared by get_video_info and download_video (cookies, EJS)."""
+        opts = {
+            'js_runtimes': self._get_js_runtimes_option(),
+            'remote_components': ['ejs:github'],
+        }
+        if cookies_file_path and os.path.exists(cookies_file_path):
+            opts['cookiefile'] = cookies_file_path
+        return opts
+    
     def get_video_info(self, url: str, cookies_file_path: str = "") -> Optional[dict]:
         """Get video information without downloading."""
         try:
             ydl_opts = {
+                **self._base_ydl_opts(cookies_file_path),
                 'quiet': True,
                 'no_warnings': True,
-                'js_runtimes': self._get_js_runtimes_option(),
-                'remote_components': ['ejs:github'],
             }
-            
-            # Add cookies file if provided and exists
-            if cookies_file_path and os.path.exists(cookies_file_path):
-                ydl_opts['cookiefile'] = cookies_file_path
-            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 return {
@@ -105,31 +109,20 @@ class YouTubeHandler:
             # Build output template
             output_template = f"{output_path}/%(title)s.%(ext)s"
             
-            # Build yt-dlp options
+            # Build yt-dlp options (base options same as get_video_info: cookies, EJS)
             ydl_opts = {
+                **self._base_ydl_opts(config.get('cookies_file_path', '')),
                 'outtmpl': output_template,
                 'quiet': False,
                 'no_warnings': False,
                 'noprogress': False,
                 'format': self._get_format_string(config),
-                'js_runtimes': self._get_js_runtimes_option(),
-                'remote_components': ['ejs:github'],
             }
-            
-            # Add progress hook if available
             if self.progress_hook:
                 ydl_opts['progress_hooks'] = [self.progress_hook.progress_hook]
-            
-            # Add subtitle options if enabled
             if config.get('download_subtitles', False):
                 ydl_opts['writesubtitles'] = True
                 ydl_opts['subtitleslangs'] = [config.get('subtitles_language', 'en')]
-            
-            # Add cookies file if provided and exists
-            cookies_file_path = config.get('cookies_file_path', '')
-            if cookies_file_path and os.path.exists(cookies_file_path):
-                ydl_opts['cookiefile'] = cookies_file_path
-            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)

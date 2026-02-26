@@ -44,6 +44,11 @@ class DownloadItemWidget(QWidget):
         self.retry_button.setVisible(False)
         top_layout.addWidget(self.retry_button)
         
+        self.details_button = QPushButton("Details")
+        self.details_button.setMaximumWidth(80)
+        self.details_button.setVisible(False)
+        top_layout.addWidget(self.details_button)
+        
         self.remove_button = QPushButton("Remove")
         self.remove_button.setMaximumWidth(80)
         top_layout.addWidget(self.remove_button)
@@ -163,12 +168,15 @@ class DownloadItemWidget(QWidget):
             self.pause_button.setVisible(True)
             self.pause_button.setText("Pause" if status == "downloading" else "Resume")
             self.retry_button.setVisible(False)
+            self.details_button.setVisible(False)
         elif status == "error":
             self.pause_button.setVisible(False)
             self.retry_button.setVisible(True)
+            self.details_button.setVisible(True)
         else:
             self.pause_button.setVisible(False)
             self.retry_button.setVisible(False)
+            self.details_button.setVisible(False)
     
     def toggle_pause(self):
         """Toggle pause state."""

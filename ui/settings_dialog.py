@@ -1,10 +1,34 @@
 """Settings dialog for configuring download preferences."""
+import os
+from PyQt6.QtCore import Qt, QThread, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-    QComboBox, QSpinBox, QCheckBox, QPushButton, 
-    QGroupBox, QFormLayout, QFileDialog, QTextBrowser
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
+    QComboBox, QSpinBox, QCheckBox, QPushButton,
+    QGroupBox, QFormLayout, QFileDialog, QTextBrowser,
+    QMessageBox, QProgressDialog
 )
 from models.settings import Settings
+from downloader.youtube_handler import YouTubeHandler
+
+# Fixed public YouTube URL used to test if cookies are accepted
+COOKIE_TEST_URL = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+
+
+class CookieTestWorker(QObject):
+    """Worker that runs in a thread to test cookies with a single YouTube request."""
+    finished = pyqtSignal(bool, str)
+
+    def run_test(self, cookies_file_path: str):
+        handler = YouTubeHandler()
+        info = handler.get_video_info(COOKIE_TEST_URL, cookies_file_path)
+        if info and (info.get("title") or "").strip():
+            self.finished.emit(True, "Cookies are valid. YouTube accepted the cookies.")
+        else:
+            self.finished.emit(
+                False,
+                "Cookies may be expired or invalid, or a network error occurred. "
+                "Try re-exporting cookies from your browser."
+            )
 
 
 class SettingsDialog(QDialog):
@@ -191,6 +215,10 @@ class SettingsDialog(QDialog):
         self.clear_button.clicked.connect(self.clear_cookies_file)
         file_layout.addWidget(self.clear_button)
         
+        self.test_cookies_button = QPushButton("Test cookies")
+        self.test_cookies_button.clicked.connect(self.test_cookies)
+        file_layout.addWidget(self.test_cookies_button)
+        
         auth_layout.addLayout(file_layout)
         auth_group.setLayout(auth_layout)
         layout.addWidget(auth_group)
@@ -229,6 +257,42 @@ class SettingsDialog(QDialog):
         self.settings.cookies_file_path = ""
         self.cookies_path_label.setText("No file selected")
         self.cookies_path_label.setStyleSheet("color: #888; padding: 5px;")
+    
+    def test_cookies(self):
+        """Run a single YouTube request to check if the cookies file is still valid."""
+        if not self.settings.cookies_file_path:
+            QMessageBox.information(self, "Test cookies", "No cookies file selected.")
+            return
+        if not os.path.exists(self.settings.cookies_file_path):
+            QMessageBox.warning(self, "Test cookies", "Cookies file not found.")
+            return
+        self.test_cookies_button.setEnabled(False)
+        self.ok_button.setEnabled(False)
+        self._cookie_test_progress = QProgressDialog("Testing cookies...", None, 0, 0, self)
+        self._cookie_test_progress.setWindowModality(Qt.WindowModality.WindowModal)
+        self._cookie_test_progress.setMinimumDuration(0)
+        self._cookie_test_progress.show()
+        self._cookie_test_thread = QThread(self)
+        self._cookie_test_worker = CookieTestWorker()
+        self._cookie_test_worker.moveToThread(self._cookie_test_thread)
+        self._cookie_test_thread.started.connect(
+            lambda: self._cookie_test_worker.run_test(self.settings.cookies_file_path)
+        )
+        self._cookie_test_worker.finished.connect(self._on_cookie_test_finished)
+        self._cookie_test_thread.start()
+    
+    def _on_cookie_test_finished(self, success: bool, message: str):
+        if hasattr(self, "_cookie_test_progress") and self._cookie_test_progress:
+            self._cookie_test_progress.close()
+        self.test_cookies_button.setEnabled(True)
+        self.ok_button.setEnabled(True)
+        if self.isVisible():
+            if success:
+                QMessageBox.information(self, "Test cookies", message)
+            else:
+                QMessageBox.warning(self, "Test cookies", message)
+        if hasattr(self, "_cookie_test_thread") and self._cookie_test_thread.isRunning():
+            self._cookie_test_thread.quit()
     
     def get_settings(self) -> Settings:
         """Get the updated settings."""

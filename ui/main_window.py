@@ -13,6 +13,7 @@ from downloader.youtube_handler import YouTubeHandler
 from ui.settings_dialog import SettingsDialog
 from ui.history_dialog import HistoryDialog
 from ui.download_item_widget import DownloadItemWidget
+from ui.error_details_dialog import ErrorDetailsDialog
 from utils.database import DownloadHistory
 
 
@@ -264,6 +265,7 @@ class MainWindow(QMainWindow):
         self.downloading_label = QLabel("Downloading: 0")
         self.completed_label = QLabel("Completed: 0")
         self.remaining_label = QLabel("Remaining: 0")
+        self.errored_label = QLabel("Errored: 0")
         
         # Style stat labels with different colors
         base_style = """
@@ -282,12 +284,14 @@ class MainWindow(QMainWindow):
         self.downloading_label.setStyleSheet(base_style + "QLabel { background-color: #ff9800; }")  # Orange for active
         self.completed_label.setStyleSheet(base_style + "QLabel { background-color: #4CAF50; }")  # Green for success
         self.remaining_label.setStyleSheet(base_style + "QLabel { background-color: #2196F3; }")  # Blue for pending
+        self.errored_label.setStyleSheet(base_style + "QLabel { background-color: #f44336; }")  # Red for error
         
         # Add to layout
         stats_layout.addWidget(self.total_label)
         stats_layout.addWidget(self.downloading_label)
         stats_layout.addWidget(self.completed_label)
         stats_layout.addWidget(self.remaining_label)
+        stats_layout.addWidget(self.errored_label)
         stats_layout.addStretch()
         
         stats_container.setLayout(stats_layout)
@@ -334,6 +338,18 @@ class MainWindow(QMainWindow):
         self.pause_all_button.setEnabled(False)
         self.pause_all_button.clicked.connect(self.pause_all)
         control_layout.addWidget(self.pause_all_button)
+        
+        self.stop_remove_all_button = QPushButton("Remove All")
+        self.stop_remove_all_button.clicked.connect(self.stop_and_remove_all)
+        control_layout.addWidget(self.stop_remove_all_button)
+        
+        self.retry_errored_button = QPushButton("Retry Errored")
+        self.retry_errored_button.clicked.connect(self.retry_all_errored)
+        control_layout.addWidget(self.retry_errored_button)
+        
+        self.get_info_all_button = QPushButton("Get Info for All")
+        self.get_info_all_button.clicked.connect(self.refresh_all_video_info)
+        control_layout.addWidget(self.get_info_all_button)
         
         self.clear_completed_button = QPushButton("Clear Completed")
         self.clear_completed_button.clicked.connect(self.clear_completed)
@@ -554,12 +570,14 @@ class MainWindow(QMainWindow):
         total = len(self.download_queue.items)
         downloading = len([item for item in self.download_queue.items if item.status == "downloading"])
         completed = len([item for item in self.download_queue.items if item.status == "completed"])
+        errored = len([item for item in self.download_queue.items if item.status == "error"])
         remaining = total - completed
         
         self.total_label.setText(f"Total: {total}")
         self.downloading_label.setText(f"Downloading: {downloading}")
         self.completed_label.setText(f"Completed: {completed}")
         self.remaining_label.setText(f"Remaining: {remaining}")
+        self.errored_label.setText(f"Errored: {errored}")
     
     def clear_completed(self):
         """Remove completed items from queue."""
@@ -569,6 +587,114 @@ class MainWindow(QMainWindow):
         self.update_queue_display()
         self.update_stats()
         self.statusBar.showMessage(f"Cleared {completed_count} completed item(s)")
+    
+    def stop_and_remove_all(self):
+        """Stop all active downloads and remove them from the queue."""
+        active = [item for item in self.download_queue.items if item.status in ("downloading", "paused")]
+        if not active:
+            self.statusBar.showMessage("No active downloads to stop")
+            return
+        reply = QMessageBox.question(
+            self,
+            "Remove All",
+            f"Stop all active downloads and remove {len(active)} item(s) from the queue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self.download_manager.stop_all()
+        self.download_queue.items = [i for i in self.download_queue.items if i.status not in ("downloading", "paused")]
+        self.download_queue.save()
+        self.update_queue_display()
+        self.update_stats()
+        self.pause_all_button.setEnabled(False)
+        self.statusBar.showMessage(f"Stopped and removed {len(active)} download(s)")
+    
+    def retry_all_errored(self):
+        """Retry all failed downloads."""
+        errored_items = [item for item in self.download_queue.items if item.status == "error"]
+        if not errored_items:
+            self.statusBar.showMessage("No failed downloads to retry")
+            return
+        for item in errored_items:
+            item.status = "queued"
+            item.progress = 0.0
+            item.speed = "0.0 MB/s"
+            item.eta = ""
+            item.file_size = ""
+            item.output_path = ""
+        self.download_manager.download_multiple(errored_items, self.settings)
+        self.download_queue.save()
+        self.update_queue_display()
+        self.update_stats()
+        self.statusBar.showMessage(f"Retrying {len(errored_items)} failed download(s)")
+    
+    def refresh_all_video_info(self):
+        """Fetch video info for all items that show Unknown Video (e.g. after errors)."""
+        items_to_refresh = [item for item in self.download_queue.items if (item.title or "").strip() == "Unknown Video"]
+        urls = [item.url for item in items_to_refresh]
+        if not urls:
+            self.statusBar.showMessage("No videos need info refresh")
+            return
+        self.add_urls_button.setEnabled(False)
+        self.url_text_edit.setEnabled(False)
+        self.get_info_all_button.setEnabled(False)
+        self.progress_dialog = QProgressDialog("Fetching video information...", "Cancel", 0, len(urls), self)
+        self.progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        self.progress_dialog.setStyleSheet("""
+            QProgressDialog {
+                background-color: #1e1e1e;
+                color: #ffffff;
+            }
+            QLabel { color: #ffffff; }
+            QPushButton { background-color: #3c3c3c; color: #ffffff; }
+            QProgressBar { border: 1px solid #444; border-radius: 3px; background-color: #252526; color: #ffffff; }
+            QProgressBar::chunk { background-color: #0078d4; border-radius: 3px; }
+        """)
+        self.progress_dialog.show()
+        self.refresh_info_thread = QThread()
+        self.refresh_info_worker = VideoInfoWorker(urls, self.settings.cookies_file_path)
+        self.refresh_info_worker.moveToThread(self.refresh_info_thread)
+        self.refresh_info_thread.started.connect(self.refresh_info_worker.fetch_all_info)
+        self.refresh_info_worker.progress_updated.connect(lambda c, t: self.progress_dialog.setValue(c))
+        self.refresh_info_worker.all_info_fetched.connect(self.on_refresh_info_fetched)
+        self.refresh_info_worker.finished.connect(self.refresh_info_thread.quit)
+        self.refresh_info_worker.finished.connect(self.refresh_info_worker.deleteLater)
+        self.refresh_info_thread.finished.connect(self.refresh_info_thread.deleteLater)
+        self.progress_dialog.canceled.connect(self.refresh_info_thread.requestInterruption)
+        self.refresh_info_thread.start()
+    
+    def on_refresh_info_fetched(self, results):
+        """Handle video info results when refreshing titles (Get Info for All)."""
+        try:
+            if self.progress_dialog.wasCanceled():
+                self.progress_dialog.close()
+                self.add_urls_button.setEnabled(True)
+                self.url_text_edit.setEnabled(True)
+                self.get_info_all_button.setEnabled(True)
+                return
+            refreshed = 0
+            for url, title in results:
+                item = self.download_queue.get_item(url)
+                if item:
+                    item.title = title
+                    refreshed += 1
+            self.download_queue.save()
+            self.update_queue_display()
+            self.update_stats()
+            self.progress_dialog.close()
+            self.add_urls_button.setEnabled(True)
+            self.url_text_edit.setEnabled(True)
+            self.get_info_all_button.setEnabled(True)
+            self.statusBar.showMessage(f"Refreshed info for {refreshed} video(s)")
+        except Exception as e:
+            self.add_urls_button.setEnabled(True)
+            self.url_text_edit.setEnabled(True)
+            self.get_info_all_button.setEnabled(True)
+            if hasattr(self, 'progress_dialog') and self.progress_dialog:
+                self.progress_dialog.close()
+            QMessageBox.critical(self, "Error", f"An error occurred while refreshing info:\n{str(e)}")
     
     def remove_download(self, url: str):
         """Remove a download from the queue."""
@@ -604,6 +730,7 @@ class MainWindow(QMainWindow):
             widget = DownloadItemWidget(item)
             widget.remove_button.clicked.connect(lambda checked, u=item.url: self.remove_download(u))
             widget.retry_button.clicked.connect(lambda checked, u=item.url: self.retry_download(u))
+            widget.details_button.clicked.connect(lambda checked, u=item.url: self.show_error_details(u))
             self.queue_layout.insertWidget(self.queue_layout.count() - 1, widget)
     
     def on_download_started(self, url: str):
@@ -710,6 +837,20 @@ class MainWindow(QMainWindow):
             self.update_queue_display()
             self.update_stats()
             self.statusBar.showMessage("Retrying download...")
+
+    def show_error_details(self, url: str):
+        """Open a dialog with the full error message for an errored download."""
+        item = self.download_queue.get_item(url)
+        if not item or item.status != "error":
+            return
+        error_message = item.file_size.strip() if item.file_size else "No error message recorded."
+        dialog = ErrorDetailsDialog(
+            title=item.title or "Unknown Video",
+            url=item.url,
+            error_message=error_message,
+            parent=self,
+        )
+        dialog.exec()
     
     def show_settings(self):
         """Show settings dialog."""
