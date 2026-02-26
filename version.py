@@ -1,11 +1,11 @@
 """Version information for Videoteka."""
 
-__version__ = "1.1.0"
-__version_info__ = (1, 1, 0)
+__version__ = "1.2.0"
+__version_info__ = (1, 2, 0)
 
 # Version components
 MAJOR = 1
-MINOR = 1
+MINOR = 2
 PATCH = 0
 
 def get_version():
