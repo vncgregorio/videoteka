@@ -141,6 +141,8 @@ python build.py
 
 #### Flatpak Distribution
 
+The Flatpak build bundles Node.js (LTS v20), so end users do not need to install Node.js when using the Flatpak package.
+
 1. Install Flatpak and flatpak-builder:
    ```bash
    # Ubuntu/Debian
@@ -185,7 +187,7 @@ python build.py
 
 #### AppImage (Recommended for Distribution)
 
-AppImage provides a portable Linux application that doesn't require installation.
+AppImage provides a portable Linux application that doesn't require installation. The AppImage build bundles Node.js (LTS v20) for yt-dlp, so end users do not need to install Node.js.
 
 1. **Prerequisites:**
    ```bash

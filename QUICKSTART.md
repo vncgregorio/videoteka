@@ -9,12 +9,18 @@ Get up and running with Videoteka in 5 minutes.
    cd videoteka
    ```
 
-2. **Create a virtual environment** (recommended)
+2. **Install or verify Node.js** (v20 or newer) — required for YouTube downloads
+   ```bash
+   node --version
+   ```
+   If Node.js is missing, install it from [nodejs.org](https://nodejs.org/) or your package manager.
+
+3. **Create a virtual environment** (recommended)
    ```bash
    python3 -m venv venv
    ```
 
-3. **Activate the virtual environment**
+4. **Activate the virtual environment**
    ```bash
    # Linux/Mac:
    source venv/bin/activate
@@ -23,12 +29,12 @@ Get up and running with Videoteka in 5 minutes.
    venv\Scripts\activate
    ```
 
-4. **Install dependencies**
+5. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-5. **Run the application**
+6. **Run the application**
    ```bash
    python main.py
    ```
@@ -100,6 +106,10 @@ See:
 - Check your internet connection
 - Verify YouTube URLs are valid
 - Make sure download folder is writable
+
+**"Challenge solving failed" or EJS-related errors?**
+- Ensure Node.js (v20+) is installed and on your PATH: `node --version`
+- See [yt-dlp EJS wiki](https://github.com/yt-dlp/yt-dlp/wiki/EJS) for details
 
 **Errors or crashes?**
 - Try running with console visible to see error messages

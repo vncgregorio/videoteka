@@ -24,6 +24,17 @@ modules:
         name: yt-dlp
         version: '>=2024.0.0'
 
+  - name: nodejs
+    buildsystem: simple
+    build-commands:
+      - mkdir -p ${FLATPAK_DEST}/bin
+      - cp node-v20.18.0-linux-x64/bin/node ${FLATPAK_DEST}/bin/node
+      - chmod +x ${FLATPAK_DEST}/bin/node
+    sources:
+      - type: archive
+        url: https://nodejs.org/dist/v20.18.0/node-v20.18.0-linux-x64.tar.xz
+        sha256: 4543670b589593f8fa5f106111fd5139081da42bb165a9239f05195e405f240a
+
   - name: videoteka
     buildsystem: simple
     build-commands:

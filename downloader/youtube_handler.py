@@ -60,12 +60,25 @@ class YouTubeHandler:
     def __init__(self, progress_hook: Optional[YouTubeProgressHook] = None):
         self.progress_hook = progress_hook
     
+    def _get_js_runtimes_option(self) -> dict:
+        """Return js_runtimes option, using bundled Node path when in Flatpak or AppImage."""
+        if os.environ.get('FLATPAK_ID'):
+            return {'node': {'path': '/app/bin/node'}}
+        appdir = os.environ.get('APPDIR')
+        if appdir:
+            node_path = os.path.join(appdir, 'usr', 'bin', 'node')
+            if os.path.isfile(node_path):
+                return {'node': {'path': node_path}}
+        return {'node': {}}
+    
     def get_video_info(self, url: str, cookies_file_path: str = "") -> Optional[dict]:
         """Get video information without downloading."""
         try:
             ydl_opts = {
                 'quiet': True,
                 'no_warnings': True,
+                'js_runtimes': self._get_js_runtimes_option(),
+                'remote_components': ['ejs:github'],
             }
             
             # Add cookies file if provided and exists
@@ -99,6 +112,8 @@ class YouTubeHandler:
                 'no_warnings': False,
                 'noprogress': False,
                 'format': self._get_format_string(config),
+                'js_runtimes': self._get_js_runtimes_option(),
+                'remote_components': ['ejs:github'],
             }
             
             # Add progress hook if available

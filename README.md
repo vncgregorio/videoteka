@@ -13,7 +13,17 @@ A desktop application for downloading YouTube videos with support for parallel d
 - Real-time progress monitoring
 - Clean PyQt6-based GUI with dark theme
 
+YouTube downloads require **Node.js (v20+)** on your system (used by yt-dlp for challenge solving).
+
 ## Installation
+
+### Prerequisites
+
+- **Python 3** (for running the application)
+- **Node.js** (v20 or newer) — required for downloading YouTube videos. yt-dlp uses it for challenge solving.
+  - Check: `node --version`
+  - Install: [nodejs.org](https://nodejs.org/) or use your package manager (apt/dnf/pacman/brew/chocolatey).
+  - **Note:** Flatpak and AppImage builds bundle Node.js; you only need it installed when running from source or using PyInstaller builds.
 
 ### Using Virtual Environment (Recommended)
 

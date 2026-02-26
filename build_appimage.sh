@@ -70,6 +70,17 @@ mkdir -p ${APP_DIR}/usr/share/videoteka
 mkdir -p ${APP_DIR}/usr/share/applications
 mkdir -p ${APP_DIR}/usr/share/icons/hicolor/256x256/apps
 
+# Download and bundle Node.js (LTS v20) for yt-dlp EJS
+NODE_VERSION="v20.18.0"
+NODE_TAR="node-${NODE_VERSION}-linux-x64.tar.xz"
+NODE_URL="https://nodejs.org/dist/${NODE_VERSION}/${NODE_TAR}"
+echo "Downloading Node.js ${NODE_VERSION}..."
+mkdir -p ${BUILD_DIR}/node
+if ! (cd ${BUILD_DIR}/node && wget -q "${NODE_URL}" -O "${NODE_TAR}" && tar -xJf "${NODE_TAR}" && cp "node-${NODE_VERSION}-linux-x64/bin/node" "../../${APP_DIR}/usr/bin/node" && chmod +x "../../${APP_DIR}/usr/bin/node"); then
+    echo -e "${YELLOW}Warning: Could not download or extract Node.js. YouTube downloads may fail in the AppImage.${NC}"
+fi
+rm -rf ${BUILD_DIR}/node
+
 # Copy application files
 echo "Copying application files..."
 cp -r models ${APP_DIR}/usr/share/videoteka/
@@ -90,6 +101,7 @@ cat > ${APP_DIR}/usr/bin/videoteka << 'EOF'
 # Videoteka Launcher for AppImage
 
 cd "$(dirname "$0")"
+export PATH="${APPDIR}/usr/bin:${PATH}"
 export PYTHONPATH="${APPDIR}/usr/share/videoteka:${PYTHONPATH}"
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${LD_LIBRARY_PATH}"
 

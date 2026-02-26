@@ -26,12 +26,17 @@ cp -r utils ${APPDIR}/usr/share/videoteka/
 cp main.py ${APPDIR}/usr/share/videoteka/
 cp version.py ${APPDIR}/usr/share/videoteka/
 
-# Create launcher script
+# Create launcher script and bundle Node.js for yt-dlp EJS
 mkdir -p ${APPDIR}/usr/bin
+if [ -f /usr/bin/node ]; then
+    cp -L /usr/bin/node "${APPDIR}/usr/bin/node"
+    chmod +x "${APPDIR}/usr/bin/node"
+fi
 cat > ${APPDIR}/usr/bin/videoteka << 'EOF'
 #!/bin/bash
 # Videoteka Launcher for AppImage
 
+export PATH="${APPDIR}/usr/bin:${PATH}"
 # Set up Python path
 export PYTHONPATH="${PYTHONPATH}:${APPDIR}/usr/share/videoteka:${PYTHON_SITE_PACKAGES}"
 
