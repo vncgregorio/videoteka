@@ -108,16 +108,18 @@ class YouTubeHandler:
         try:
             # Build output template
             output_template = f"{output_path}/%(title)s.%(ext)s"
-            
-            # Build yt-dlp options (base options same as get_video_info: cookies, EJS)
+
             ydl_opts = {
                 **self._base_ydl_opts(config.get('cookies_file_path', '')),
                 'outtmpl': output_template,
+                'restrict_filenames': True,
                 'quiet': False,
                 'no_warnings': False,
                 'noprogress': False,
                 'format': self._get_format_string(config),
             }
+            if config.get('video_quality') != 'audio':
+                ydl_opts['merge_output_format'] = config.get('preferred_format', 'mp4')
             if self.progress_hook:
                 ydl_opts['progress_hooks'] = [self.progress_hook.progress_hook]
             if config.get('download_subtitles', False):
@@ -127,32 +129,42 @@ class YouTubeHandler:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 return (True, filename)
-                
         except Exception as e:
             return (False, str(e))
     
     def _get_format_string(self, config: dict) -> str:
-        """Build format string based on configuration."""
+        """Build format string with fallback chains so requested format is not required to exist."""
         quality = config.get('video_quality', 'best')
         format_type = config.get('preferred_format', 'mp4')
-        
+        exts = ['webm', 'mp4', 'mkv']
+        ext_order = [format_type] + [e for e in exts if e != format_type]
+
         if quality == 'audio':
-            # Audio only
+            # Audio only: prefer m4a then webm, then any
             audio_quality = config.get('audio_quality', 'best')
             if audio_quality == 'best':
-                return 'bestaudio/best'
+                return 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best'
             elif audio_quality == '192k':
-                return 'bestaudio[ext=m4a]/bestaudio'
+                return 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio'
             else:
-                return 'bestaudio[abr<=128]/bestaudio'
-        
-        # Video with audio
-        format_map = {
-            'best': f'bestvideo[ext={format_type}]+bestaudio[ext=m4a]/best[ext={format_type}]/best',
-            '1080p': f'bestvideo[height<=1080][ext={format_type}]+bestaudio[ext=m4a]/best[height<=1080][ext={format_type}]/best',
-            '720p': f'bestvideo[height<=720][ext={format_type}]+bestaudio[ext=m4a]/best[height<=720][ext={format_type}]/best',
-            '480p': f'bestvideo[height<=480][ext={format_type}]+bestaudio[ext=m4a]/best[height<=480][ext={format_type}]/best',
+                return 'bestaudio[abr<=128]/bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio'
+
+        # Video with audio: build video part, audio part, and single-format fallbacks
+        height_filter = {
+            'best': '',
+            '1080p': '[height<=1080]',
+            '720p': '[height<=720]',
+            '480p': '[height<=480]',
         }
-        
-        return format_map.get(quality, format_map['best'])
+        h = height_filter.get(quality, '')
+
+        video_parts = [f'bestvideo{h}[ext={e}]' for e in ext_order] + [f'bestvideo{h}']
+        audio_parts = ['bestaudio[ext=m4a]', 'bestaudio[ext=webm]', 'bestaudio']
+        single_parts = [f'best{h}[ext={e}]' for e in ext_order] + ['best']
+
+        video_part = '/'.join(video_parts)
+        audio_part = '/'.join(audio_parts)
+        single_part = '/'.join(single_parts)
+
+        return f'({video_part})+({audio_part})/{single_part}'
 

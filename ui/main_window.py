@@ -67,6 +67,9 @@ class MainWindow(QMainWindow):
         self.init_ui()
         self.setup_menu_bar()
         
+        self.download_manager.batch_started.connect(self._on_batch_started)
+        self.download_manager.batch_finished.connect(self._on_batch_finished)
+        
         # Load saved queue on startup
         self.download_queue.load()
         if self.download_queue.items:
@@ -536,6 +539,13 @@ class MainWindow(QMainWindow):
     
     def start_downloads(self):
         """Start downloading videos in the queue."""
+        if self.download_manager.running:
+            QMessageBox.information(
+                self,
+                "Downloads in progress",
+                "A download batch is already running. Please wait for it to finish or pause it before starting more.",
+            )
+            return
         if not self.settings.download_folder:
             QMessageBox.warning(self, "No Folder", "Please select a download folder first.")
             return
@@ -613,6 +623,13 @@ class MainWindow(QMainWindow):
     
     def retry_all_errored(self):
         """Retry all failed downloads."""
+        if self.download_manager.running:
+            QMessageBox.information(
+                self,
+                "Downloads in progress",
+                "A download batch is already running. Please wait for it to finish or pause it before starting more.",
+            )
+            return
         errored_items = [item for item in self.download_queue.items if item.status == "error"]
         if not errored_items:
             self.statusBar.showMessage("No failed downloads to retry")
@@ -814,7 +831,17 @@ class MainWindow(QMainWindow):
             self.update_queue_display()
             self.update_stats()
             self.statusBar.showMessage(f"Download failed: {error_message}")
-    
+
+    def _on_batch_started(self):
+        """Disable Start and Retry buttons while a batch is running."""
+        self.start_button.setEnabled(False)
+        self.retry_errored_button.setEnabled(False)
+
+    def _on_batch_finished(self):
+        """Re-enable Start and Retry buttons when the batch ends."""
+        self.start_button.setEnabled(True)
+        self.retry_errored_button.setEnabled(True)
+
     def retry_download(self, url: str):
         """Retry a failed download."""
         item = self.download_queue.get_item(url)
